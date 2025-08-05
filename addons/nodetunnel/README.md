@@ -13,4 +13,4 @@ await peer.relay_connected
 
 # Host or join
 peer.host()  # To host
-# peer.join("HOST_OID")  # To join
+peer.join("HOST_OID")  # To join
