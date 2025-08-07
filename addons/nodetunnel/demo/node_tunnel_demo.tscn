@@ -1,0 +1,58 @@
+[gd_scene load_steps=2 format=3 uid="uid://dxvqdifsxtr1h"]
+
+[ext_resource type="Script" uid="uid://du23v82cdps36" path="res://addons/nodetunnel/demo/node_tunnel_demo.gd" id="1_pe4km"]
+
+[node name="NodeTunnelDemo" type="Node2D"]
+script = ExtResource("1_pe4km")
+
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+_spawnable_scenes = PackedStringArray("uid://k75j6hnh43t3")
+spawn_path = NodePath("..")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Control" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ConnectionControls" type="VBoxContainer" parent="UI/Control"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -80.5
+offset_top = -64.0
+offset_right = 80.5
+offset_bottom = 64.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Host" type="Button" parent="UI/Control/ConnectionControls"]
+layout_mode = 2
+text = "Host"
+
+[node name="HSeparator" type="HSeparator" parent="UI/Control/ConnectionControls"]
+layout_mode = 2
+
+[node name="HostID" type="LineEdit" parent="UI/Control/ConnectionControls"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Host ID"
+
+[node name="Join" type="Button" parent="UI/Control/ConnectionControls"]
+layout_mode = 2
+text = "Join"
+
+[node name="IDLabel" type="Label" parent="UI/Control/ConnectionControls"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Online ID: ABCD1234"
+
+[connection signal="pressed" from="UI/Control/ConnectionControls/Host" to="." method="_on_host_pressed"]
+[connection signal="pressed" from="UI/Control/ConnectionControls/Join" to="." method="_on_join_pressed"]

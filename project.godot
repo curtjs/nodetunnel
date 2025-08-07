@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="nodetunnel"
-run/main_scene="uid://d28gwjfkiddkr"
+run/main_scene="uid://dxvqdifsxtr1h"
 config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
 

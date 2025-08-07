@@ -1,0 +1,62 @@
+extends Node2D
+
+const PLAYER_SCENE = preload("res://addons/nodetunnel/demo/player/node_tunnel_demo_player.tscn")
+
+var peer: NodeTunnelPeer
+
+
+func _ready() -> void:
+	# Create the NodeTunnelPeer
+	peer = NodeTunnelPeer.new()
+	
+	# Always set the global peer *before* attempting to connect
+	multiplayer.multiplayer_peer = peer
+	
+	# Connect to the public relay
+	peer.connect_to_relay("relay.nodetunnel.io", 9998)
+	
+	# Wait until we have connected to the relay
+	await peer.relay_connected
+	
+	# At this point, we can access the online ID that the server generated for us
+	%IDLabel.text = "Online ID: " + peer.online_id
+
+
+func _on_host_pressed() -> void:
+	# Host a game, must be done *after* relay connection is made
+	peer.host()
+	
+	# Copy online id to clipboard
+	DisplayServer.clipboard_set(peer.online_id)
+	
+	# Wait until peer has started hosting
+	await peer.hosting
+	
+	# Spawn the host player
+	_add_player()
+	
+	# Attach peer_connected signal
+	peer.peer_connected.connect(_add_player)
+	
+	# Hide the UI
+	$UI.hide()
+
+
+func _on_join_pressed() -> void:
+	# Join a game, must be done *after* relay connection is made
+	# Requires the online ID of the host peer
+	peer.join(%HostID.text)
+	
+	# Wait until peer has finished joining
+	await peer.joined
+	
+	# Hide the UI
+	$UI.hide()
+
+
+# Same as any other Godot game
+# Uses the MultiplayerSpawner node's auto-spawn list to spawn players
+func _add_player(peer_id: int = 1) -> void:
+	var player = PLAYER_SCENE.instantiate()
+	player.name = str(peer_id)
+	add_child(player)

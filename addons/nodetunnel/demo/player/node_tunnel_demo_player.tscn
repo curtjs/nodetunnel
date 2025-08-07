@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3 uid="uid://k75j6hnh43t3"]
+
+[ext_resource type="Script" uid="uid://ce3ifw4v3jgvw" path="res://addons/nodetunnel/demo/player/node_tunnel_demo_player.gd" id="1_7jw1k"]
+[ext_resource type="Texture2D" uid="uid://ct65mgn332epf" path="res://addons/nodetunnel/demo/player/node_tunnel_demo_sprite.png" id="1_sjhmu"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sjhmu"]
+size = Vector2(128, 128)
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_xryeg"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+
+[node name="NodeTunnelDemoPlayer" type="CharacterBody2D"]
+script = ExtResource("1_7jw1k")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_sjhmu")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_xryeg")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("1_sjhmu")
