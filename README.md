@@ -33,7 +33,7 @@ func _ready():
     
     # Connect to the free public relay
     # Note that this **must** be done before hosting/joining
-    peer.connect_to_relay("nodetunnel.io", 9998)
+    peer.connect_to_relay("relay.nodetunnel.io", 9998)
     await peer.relay_connected
     print("Connected! Your ID: ", peer.online_id)
 
@@ -65,12 +65,10 @@ The relay forwards packets between players, so everyone can connect regardless o
 
 ## 🌐 Free Public Relay
 
-We provide a free relay server for testing:
+I provide a free relay server for testing:
 
-- **Host**: `nodetunnel.io:9998`
-- **Limits**: ~100 concurrent users
-- **Uptime**: Best effort, no guarantees
-- **Use case**: Prototypes, testing, game jams
+- **Host**: `relay.nodetunnel.io:9998`
+- **Uptime**: See [nodetunnel.io](nodetunnel.io)
 
 **Note**: Don't rely on this for anything important! Server source code will be available soon for self-hosting.
 
