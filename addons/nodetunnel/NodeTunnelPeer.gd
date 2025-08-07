@@ -190,8 +190,11 @@ func _process_udp_packet(from_oid: String, data: PackedByteArray) -> void:
 ## WARNING: Internal NodeTunnel Code
 ## [b]Do not call this method directly![/b]
 func _handle_peer_list(numeric_to_online_id: Dictionary[int, String]) -> void:
+	# Store old state before clearing
+	var old_connected_peers = connected_peers.duplicate()
+	
 	# Emit disconnection signals for peers that are no longer in the list
-	for old_nid in connected_peers.keys():
+	for old_nid in old_connected_peers.keys():
 		if !numeric_to_online_id.has(old_nid):
 			peer_disconnected.emit(old_nid)
 	
@@ -201,7 +204,7 @@ func _handle_peer_list(numeric_to_online_id: Dictionary[int, String]) -> void:
 	
 	# Process new peer connections
 	for nid in numeric_to_online_id.keys():
-		var was_connected = connected_peers.has(nid)
+		var was_connected = old_connected_peers.has(nid)
 		connected_peers[nid] = true
 		
 		if numeric_to_online_id[nid] == online_id:

@@ -8,12 +8,13 @@ var peer: NodeTunnelPeer
 func _ready() -> void:
 	# Create the NodeTunnelPeer
 	peer = NodeTunnelPeer.new()
+	#peer.debug_enabled = true # Enable debugging if needed
 	
 	# Always set the global peer *before* attempting to connect
 	multiplayer.multiplayer_peer = peer
 	
 	# Connect to the public relay
-	peer.connect_to_relay("relay.nodetunnel.io", 9998)
+	peer.connect_to_relay("127.0.0.1", 9998)
 	
 	# Wait until we have connected to the relay
 	await peer.relay_connected
@@ -38,6 +39,9 @@ func _on_host_pressed() -> void:
 	# Attach peer_connected signal
 	peer.peer_connected.connect(_add_player)
 	
+	# Attach peer_disconnected signal
+	peer.peer_disconnected.connect(_remove_player)
+	
 	# Hide the UI
 	$UI.hide()
 
@@ -57,6 +61,16 @@ func _on_join_pressed() -> void:
 # Same as any other Godot game
 # Uses the MultiplayerSpawner node's auto-spawn list to spawn players
 func _add_player(peer_id: int = 1) -> void:
+	if has_node(str(peer_id)):
+		print("Player ", peer_id, " already exists, skipping")
+		return
+	
+	print("Player Joined: ", peer_id)
 	var player = PLAYER_SCENE.instantiate()
 	player.name = str(peer_id)
 	add_child(player)
+
+
+func _remove_player(peer_id: int) -> void:
+	var player = get_node(str(peer_id))
+	player.queue_free()
