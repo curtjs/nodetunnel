@@ -28,11 +28,20 @@ func _init() -> void:
 	socket = PacketPeerUDP.new()
 
 func connect_to_relay(host: String, port: int, oid: String):
-	relay_host = host
 	relay_port = port
 	online_id = oid
 	
-	var res = socket.connect_to_host(host, port)
+	if not host.is_valid_ip_address():
+		var ip = IP.resolve_hostname(host)
+		if ip == "":
+			print("Failed to resolve hostname: ", host)
+			return
+		relay_host = ip
+		print("Resolved ", host, " to ", ip)
+	else:
+		relay_host = host
+	
+	var res = socket.connect_to_host(relay_host, port)
 	if res != OK:
 		NodeTunnelPeer._log_error("Failed to connect to UDP socket: " + str(res))
 
