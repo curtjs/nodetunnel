@@ -19,11 +19,22 @@ func _ready() -> void:
 	# Wait until we have connected to the relay
 	await peer.relay_connected
 	
+	# Attach peer_connected signal
+	peer.peer_connected.connect(_add_player)
+	
+	# Attach peer_disconnected signal
+	peer.peer_disconnected.connect(_remove_player)
+	
+	# Attach room_left signal
+	peer.room_left.connect(_cleanup_room)
+	
 	# At this point, we can access the online ID that the server generated for us
 	%IDLabel.text = "Online ID: " + peer.online_id
 
 
 func _on_host_pressed() -> void:
+	print("Online ID: ", peer.online_id)
+	
 	# Host a game, must be done *after* relay connection is made
 	peer.host()
 	
@@ -36,14 +47,11 @@ func _on_host_pressed() -> void:
 	# Spawn the host player
 	_add_player()
 	
-	# Attach peer_connected signal
-	peer.peer_connected.connect(_add_player)
-	
-	# Attach peer_disconnected signal
-	peer.peer_disconnected.connect(_remove_player)
-	
 	# Hide the UI
-	$UI.hide()
+	%ConnectionControls.hide()
+	
+	# Show leave room button
+	%LeaveRoom.show()
 
 
 func _on_join_pressed() -> void:
@@ -55,15 +63,15 @@ func _on_join_pressed() -> void:
 	await peer.joined
 	
 	# Hide the UI
-	$UI.hide()
-
+	%ConnectionControls.hide()
+	
+	# Show leave room button
+	%LeaveRoom.show()
 
 # Same as any other Godot game
 # Uses the MultiplayerSpawner node's auto-spawn list to spawn players
 func _add_player(peer_id: int = 1) -> void:
-	if has_node(str(peer_id)):
-		print("Player ", peer_id, " already exists, skipping")
-		return
+	if !multiplayer.is_server(): return
 	
 	print("Player Joined: ", peer_id)
 	var player = PLAYER_SCENE.instantiate()
@@ -72,5 +80,15 @@ func _add_player(peer_id: int = 1) -> void:
 
 
 func _remove_player(peer_id: int) -> void:
+	if !multiplayer.is_server(): return
+	
 	var player = get_node(str(peer_id))
 	player.queue_free()
+
+
+func _on_leave_room_pressed() -> void:
+	peer.leave_room()
+
+func _cleanup_room() -> void:
+	%LeaveRoom.hide()
+	%ConnectionControls.show()

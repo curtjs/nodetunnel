@@ -20,6 +20,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="ConnectionControls" type="VBoxContainer" parent="UI/Control"]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -54,5 +55,14 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Online ID: ABCD1234"
 
+[node name="LeaveRoom" type="Button" parent="UI/Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_right = 8.0
+offset_bottom = 8.0
+text = "Leave Room"
+
 [connection signal="pressed" from="UI/Control/ConnectionControls/Host" to="." method="_on_host_pressed"]
 [connection signal="pressed" from="UI/Control/ConnectionControls/Join" to="." method="_on_join_pressed"]
+[connection signal="pressed" from="UI/Control/LeaveRoom" to="." method="_on_leave_room_pressed"]
