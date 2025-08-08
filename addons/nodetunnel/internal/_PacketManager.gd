@@ -20,12 +20,14 @@ signal connect_res(oid: String)
 signal host_res
 signal join_res
 signal peer_list_res(nid_to_oid: Dictionary[int, String])
+signal leave_room_res
 
 enum PacketType {
 	CONNECT,
 	HOST,
 	JOIN,
-	PEERLIST
+	PEERLIST,
+	LEAVE_ROOM
 }
 
 func handle_msg(data: PackedByteArray) -> void:
@@ -43,6 +45,9 @@ func handle_msg(data: PackedByteArray) -> void:
 		PacketType.PEERLIST:
 			var p_list = _handle_peer_list(payload)
 			peer_list_res.emit(p_list)
+		PacketType.LEAVE_ROOM:
+			print("LEAVE ROOM")
+			leave_room_res.emit()
 
 ## Sends a connect request to the server
 func send_conect(tcp: StreamPeerTCP) -> void:
@@ -68,6 +73,7 @@ func send_host(tcp: StreamPeerTCP, oid: String) -> void:
 	
 	tcp.put_data(ByteUtils.pack_u32(msg.size()))
 	tcp.put_data(msg)
+	print("Sent host request")
 
 ## Sends a join request to the server
 func send_join(tcp: StreamPeerTCP, oid: String, host_oid: String) -> void:
@@ -79,6 +85,14 @@ func send_join(tcp: StreamPeerTCP, oid: String, host_oid: String) -> void:
 	
 	msg.append_array(ByteUtils.pack_u32(host_oid.length()))
 	msg.append_array(host_oid.to_utf8_buffer())
+	
+	tcp.put_data(ByteUtils.pack_u32(msg.size()))
+	tcp.put_data(msg)
+
+## Sends a leave room request to the server
+func send_leave_room(tcp: StreamPeerTCP) -> void:
+	var msg = PackedByteArray()
+	msg.append_array(ByteUtils.pack_u32(PacketType.LEAVE_ROOM))
 	
 	tcp.put_data(ByteUtils.pack_u32(msg.size()))
 	tcp.put_data(msg)

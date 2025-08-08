@@ -20,8 +20,13 @@ enum ConnectionState {
 ## [br]
 ## [br][param online_id] The online ID from NodeTunnel
 signal relay_connected(online_id: String)
+## Fires when [member host] succeeds.
 signal hosting
+## Fires when [member join] succeeds.
 signal joined
+## Fires when this peer leaves a room
+## Also fires when the room host leaves and kicks this peer from the room
+signal room_left
 
 # Connection configuration
 var relay_host: String
@@ -45,6 +50,7 @@ var _udp_handler: _NodeTunnelUDP
 # Peer management
 var _numeric_to_online_id: Dictionary[int, String] = {}
 var _peer_list_ready: bool = false
+var _peer_leaving_room: bool = false
 
 # Packet management
 var _incoming_packets: Array = []
@@ -71,6 +77,7 @@ func _init():
 	_tcp_handler = _NodeTunnelTCP.new()
 	_udp_handler = _NodeTunnelUDP.new()
 	_packet_manager.peer_list_res.connect(_handle_peer_list)
+	_packet_manager.leave_room_res.connect(_handle_leave_room)
 
 # ============================================================================
 # PUBLIC API
@@ -110,11 +117,16 @@ func host() -> void:
 		_log_error("Must be connected to relay before hosting")
 		return
 	
-	_udp_handler.send_connect()
-	await _udp_handler.udp_connected
+	if !_udp_handler.connected:
+		_log("Sending UDP Connect Request")
+		_udp_handler.send_connect()
+		await _udp_handler.udp_connected
+	_log("UDP Connected")
 	
+	_log("Sending TCP Host Request")
 	_packet_manager.send_host(_tcp_handler.tcp, online_id)
 	await _packet_manager.peer_list_res
+	_log("Peer List Received")
 	
 	connection_state = ConnectionState.HOSTING
 	connection_status = MultiplayerPeer.CONNECTION_CONNECTED
@@ -144,9 +156,19 @@ func join(host_oid: String) -> void:
 	_log("Joined session with host: " + host_oid)
 	joined.emit()
 
+func leave_room() -> void:
+	if connection_state != ConnectionState.JOINED && connection_state != ConnectionState.HOSTING:
+		_log_error("Must be in a room before attempting to leave!")
+		return
+	
+	_peer_leaving_room = true
+	
+	_packet_manager.send_leave_room(_tcp_handler.tcp)
+
 ## Disconnect from the relay server and clean up all connections
 func disconnect_from_relay() -> void:
 	_reset_connection()
+	online_id = ""
 	_log("Disconnected from relay")
 
 # ============================================================================
@@ -178,11 +200,9 @@ func _process_udp_packet(from_oid: String, data: PackedByteArray) -> void:
 	var from_nid = _get_numeric_id_for_online_id(from_oid)
 	
 	if from_nid == 0:
-		_log_error("Unknown sender OID: " + from_oid)
 		return
-		
 	if from_nid == unique_id:
-		return  # Ignore packets from self
+		return
 	
 	var packet_data = PacketData.new(data, from_nid, current_transfer_channel, current_transfer_mode)
 	_incoming_packets.append(packet_data)
@@ -221,6 +241,23 @@ func _handle_peer_list(numeric_to_online_id: Dictionary[int, String]) -> void:
 	
 	_log("Updated peer list: " + str(connected_peers))
 
+func _handle_leave_room() -> void:
+	print("Leave the room dumbass")
+	
+	for p in connected_peers:
+		peer_disconnected.emit(p)
+	
+	connection_state = ConnectionState.CONNECTED
+	connection_status = MultiplayerPeer.CONNECTION_CONNECTING
+	connected_peers.clear()
+	_incoming_packets.clear()
+	_udp_packet_buffer.clear()
+	_numeric_to_online_id.clear()
+	unique_id = 0
+	_peer_list_ready = false
+	
+	room_left.emit()
+
 # ============================================================================
 # UTILITY METHODS
 # ============================================================================
@@ -242,7 +279,6 @@ func _reset_connection() -> void:
 	_incoming_packets.clear()
 	_udp_packet_buffer.clear()
 	_numeric_to_online_id.clear()
-	online_id = ""
 	unique_id = 0
 	_peer_list_ready = false
 

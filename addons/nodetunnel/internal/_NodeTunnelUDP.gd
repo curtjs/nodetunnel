@@ -20,6 +20,7 @@ var socket: PacketPeerUDP
 var relay_host: String
 var relay_port: int
 var online_id: String
+var connected: bool = false
 
 signal udp_connected
 signal packet_received(from_oid: String, data: PackedByteArray)
@@ -50,6 +51,7 @@ func send_connect():
 
 func handle_connect_res():
 	udp_connected.emit()
+	connected = true
 
 func send_packet(to_oid: String, data: PackedByteArray):
 	var packet = PackedByteArray()
