@@ -8,7 +8,7 @@ var peer: NodeTunnelPeer
 func _ready() -> void:
 	# Create the NodeTunnelPeer
 	peer = NodeTunnelPeer.new()
-	peer.debug_enabled = true # Enable debugging if needed
+	#peer.debug_enabled = true # Enable debugging if needed
 	
 	# Always set the global peer *before* attempting to connect
 	multiplayer.multiplayer_peer = peer

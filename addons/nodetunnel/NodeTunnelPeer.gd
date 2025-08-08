@@ -242,8 +242,6 @@ func _handle_peer_list(numeric_to_online_id: Dictionary[int, String]) -> void:
 	_log("Updated peer list: " + str(connected_peers))
 
 func _handle_leave_room() -> void:
-	print("Leave the room dumbass")
-	
 	for p in connected_peers:
 		peer_disconnected.emit(p)
 	
