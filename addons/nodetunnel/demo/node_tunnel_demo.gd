@@ -87,8 +87,17 @@ func _remove_player(peer_id: int) -> void:
 
 
 func _on_leave_room_pressed() -> void:
+	# Tells NodeTunnel to remove this peer from the room
+	# Will eventually result in `peer.room_left` being emitted
 	peer.leave_room()
 
+
+# This function runs whenever this peer gets removed from a room,
+# whether it's intentional or due to the host leaving.
+# See peer.room_left.connect(_cleanup_room) in the _ready() function
 func _cleanup_room() -> void:
+	# Hide the leave room button
 	%LeaveRoom.hide()
+	
+	# Show the main menu again
 	%ConnectionControls.show()
