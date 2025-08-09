@@ -80,11 +80,13 @@ I provide a free relay server for testing:
 - `relay_connected(online_id: String)` - Connected to relay
 - `hosting` - Started hosting  
 - `joined` - Joined a session
+- `room_left` - Disconnected from the room
 
 #### Methods
 - `connect_to_relay(host: String, port: int)` - Connect to relay
 - `host()` - Start hosting
 - `join(host_oid: String)` - Join using host's online ID
+- `leave_room()` - Leaves the current room, will delete the room when called from host
 - `disconnect_from_relay()` - Disconnect
 
 #### Properties  
