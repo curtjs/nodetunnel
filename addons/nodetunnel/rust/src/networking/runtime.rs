@@ -1,6 +1,7 @@
+use godot::global::godot_print;
 use tokio::{runtime::Runtime, sync::mpsc, task::JoinHandle};
 
-use crate::types::{commands::NetworkCommand, events::NetworkEvent, relay_state::RelayState};
+use crate::{networking::tcp_handler::TcpHandler, types::{commands::NetworkCommand, events::NetworkEvent, relay_state::RelayState}};
 
 pub struct NetworkingRuntime {
     runtime: Runtime,
@@ -62,6 +63,7 @@ struct NetworkCore {
     out_events: mpsc::UnboundedSender<NetworkEvent>,
     state: RelayState,
     online_id: Option<String>,
+    tcp_handler: TcpHandler,
 }
 
 impl NetworkCore {
@@ -71,9 +73,10 @@ impl NetworkCore {
     ) -> Self {
         Self {
             in_cmds,
-            out_events,
+            out_events: out_events.clone(),
             state: RelayState::Disconnected,
             online_id: None,
+            tcp_handler: TcpHandler::new(out_events),
         }
     }
 
@@ -92,7 +95,7 @@ impl NetworkCore {
             NetworkCommand::ConnectToRelay { host, port } => {
                 println!("Connecting to relay: {}:{}", host, port);
 
-                let _ = self.out_events.send(NetworkEvent::RelayConnected { online_id: "TEST123".to_string() });
+                self.handle_connect_to_relay(&host, port).await;
             }
             NetworkCommand::Host => {
                 println!("Starting to host");
@@ -107,6 +110,37 @@ impl NetworkCore {
             }
             NetworkCommand::Disconnect => {
                 println!("Disconnecting")
+            }
+        }
+    }
+
+    async fn handle_connect_to_relay(&mut self, host: &str, port: u16) {
+        self.state = RelayState::Connecting;
+
+        // Connect to TCP
+        match self.tcp_handler.connect(host, port).await {
+            Ok(()) => {
+                println!("TCP connected, sending connect request...");
+
+                match self.tcp_handler.send_connect_request().await {
+                    Ok(online_id) => {
+                        println!("Received online ID: {}", online_id);
+                        self.state = RelayState::Connected;
+                        self.online_id = Some(online_id.clone());
+
+                        let _ = self.out_events.send(NetworkEvent::RelayConnected { online_id });
+                    }
+                    Err(e) => {
+                        println!("Failed to get online ID: {}", e);
+                        self.state = RelayState::Disconnected;
+                        let _ = self.out_events.send(NetworkEvent::Error { message: format!("Relay connect failed: {}", e) });
+                    }
+                }
+            }
+            Err(e) => {
+                println!("TCP connection failed: {}", e);
+                self.state = RelayState::Disconnected;
+                let _ = self.out_events.send(NetworkEvent::Error { message: format!("Connection failed: {}", e) });
             }
         }
     }

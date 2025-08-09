@@ -30,7 +30,7 @@ impl NetworkTest {
     fn test_connect(&mut self) {
         if let Some(runtime) = &self.runtime {
             let _ = runtime.send_command(NetworkCommand::ConnectToRelay {
-                host: "test.example.com".to_string(),
+                host: "relay.nodetunnel.io".to_string(),
                 port: 9998,
             });
             godot_print!("Sent connect command");
