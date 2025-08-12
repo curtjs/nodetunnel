@@ -16,6 +16,9 @@ NodeTunnel provides peer-to-peer multiplayer without NAT traversal, port forward
 
 ## 🚀 Quick Start
 
+### YouTube Tutorial
+[![Click here to view](http://img.youtube.com/vi/frNKdfPQfxA/0.jpg)](http://www.youtube.com/watch?v=frNKdfPQfxA "I Fixed Godot's Biggest Multiplayer Problem")
+
 ### Installation
 
 1. Download from [GitHub Releases](https://github.com/curtjs/nodetunnel/releases)
