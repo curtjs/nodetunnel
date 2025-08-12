@@ -1,13 +1,13 @@
 [package]
-name = "nodetunnel"
-version = "0.0.1"
+name = "rust"
+version = "0.1.0"
 edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-godot = "0.3.4"
+godot = { git = "https://github.com/godot-rust/gdext.git", branch = "master", features = ["experimental-threads"] }
 tokio = { version = "1.0", features = [
     "rt",
     "rt-multi-thread",
@@ -17,4 +17,3 @@ tokio = { version = "1.0", features = [
     "macros",
     "io-util"
 ] }
-serde = { version = "1.0", features = ["derive"] }

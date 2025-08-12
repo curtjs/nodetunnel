@@ -60,13 +60,24 @@ impl PacketBuilder {
         ByteUtils::pack_u32(PacketType::ConnectToRelay as u32)
     }
 
-    // TODO: Implement rest of packet types
+    pub fn build_host(online_id: &str) -> Vec<u8> {
+        let mut packet = ByteUtils::pack_u32(PacketType::HostGame as u32);
+        packet.extend(ByteUtils::pack_str(online_id));
+        packet
+    }
+    
+    pub fn build_join(online_id: &str, host_online_id: &str) -> Vec<u8> {
+        let mut packet = ByteUtils::pack_u32(PacketType::JoinGame as u32);
+        packet.extend(ByteUtils::pack_str(online_id));
+        packet.extend(ByteUtils::pack_str(host_online_id));
+        packet
+    }
 }
 
 pub struct PacketParser;
 
 impl PacketParser {
-    pub fn parse_connect_response(data: &[u8]) -> Result<ConnectResponse, String> {
+    pub fn parse_connect(data: &[u8]) -> Result<ConnectResponse, String> {
         if data.len() < 8 {
             return Err("Connect response too short".to_string());
         }
@@ -75,5 +86,33 @@ impl PacketParser {
             .ok_or("Failed to parse online ID")?;
 
         Ok(ConnectResponse { online_id })
+    }
+    
+    pub fn parse_peers(data: &[u8]) -> Result<PeerListResponse, String> {
+        let mut offset = 4;
+        
+        let peer_count = ByteUtils::unpack_u32(data, offset)
+            .ok_or("Peer list missing peer count")?;
+        
+        let mut peers = Vec::with_capacity(peer_count as usize);
+        
+        offset += 4;
+        
+        for _ in 0..peer_count {
+            let (online_id, new_offset) = ByteUtils::unpack_str(data, offset)
+                .ok_or("Failed to read peer online ID")?;
+            offset = new_offset;
+            
+            let numeric_id = ByteUtils::unpack_u32(data, offset)
+                .ok_or("Failed to read peer numeric ID")?;
+            offset += 4;
+            
+            peers.push(PeerInfo {
+                online_id,
+                numeric_id
+            });
+        }
+        
+        Ok(PeerListResponse { peers })
     }
 }

@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3 uid="uid://55gme501i021"]
+
+[ext_resource type="Script" uid="uid://b5t6w70o3w377" path="res://test.gd" id="1_37kl0"]
+
+[node name="Test" type="Node2D"]
+script = ExtResource("1_37kl0")
+
+[node name="HostOID" type="LineEdit" parent="."]
+offset_right = 381.0
+offset_bottom = 54.0
+
+[node name="Join" type="Button" parent="."]
+offset_right = 8.0
+offset_bottom = 8.0
+
+[connection signal="pressed" from="Join" to="." method="_on_join_pressed"]

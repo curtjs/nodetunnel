@@ -2,8 +2,8 @@
 #[derive(Debug, Clone)]
 pub enum NetworkCommand {
     ConnectToRelay { host: String, port: u16 },
-    Host,
-    Join { host_oid: String },
+    Host { online_id: String },
+    Join { online_id: String, host_online_id: String },
     SendPacket { to_peer: i32, data: Vec<u8> },
     Disconnect,
 }
