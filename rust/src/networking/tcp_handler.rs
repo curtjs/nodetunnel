@@ -1,6 +1,6 @@
 use std::fmt::format;
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream, sync::mpsc};
-
+use tokio::sync::mpsc::UnboundedSender;
 use crate::{types::{events::NetworkEvent, packet_types::PacketType}, utils::byte_utils::ByteUtils};
 use crate::types::packet_types::{PacketBuilder, PacketParser, PeerListResponse};
 
@@ -57,7 +57,7 @@ impl TcpHandler {
         let packet_type = ByteUtils::unpack_u32(&response, 0).ok_or("Missing packet type")?;
 
         let plist_res = match PacketType::from_u32(packet_type) {
-            Some(PacketType::HostGame) => {
+            Some(PacketType::PeerList) => {
                 PacketParser::parse_peers(&response)?
             }
             _ => {
@@ -76,7 +76,7 @@ impl TcpHandler {
         let packet_type = ByteUtils::unpack_u32(&response, 0).ok_or("Missing packet type")?;
         
         let plist_res = match PacketType::from_u32(packet_type) {
-            Some(PacketType::JoinGame) => {
+            Some(PacketType::PeerList) => {
                 PacketParser::parse_peers(&response)?
             }
             _ => {
@@ -119,5 +119,25 @@ impl TcpHandler {
         } else {
             Err("Not connected to TCP".to_string())
         }
+    }
+
+    pub async fn poll_messages(&mut self) -> Vec<Vec<u8>> {
+        let mut messages = Vec::new();
+
+        if let Some(stream) = &mut self.stream {
+            // Use a very short timeout to make it non-blocking
+            let timeout = tokio::time::Duration::from_millis(1);
+
+            loop {
+                match tokio::time::timeout(timeout, self.read_packet()).await {
+                    Ok(Ok(packet)) => {
+                        messages.push(packet);
+                    }
+                    _ => break, // Timeout or error - no more messages
+                }
+            }
+        }
+
+        messages
     }
 }

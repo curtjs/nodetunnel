@@ -3,26 +3,32 @@ extends Node2D
 var nt: NetworkTest
 var peer: NodeTunnelPeer
 
+const PLAYER = preload("res://player.tscn")
+
 func _ready() -> void:
 	print("Hello from Godot")
-	#nt = NetworkTest.new()
-	#nt.start_runtime()
-	#nt.test_connect()
 	
 	peer = NodeTunnelPeer.new()
+	multiplayer.multiplayer_peer = peer
 	peer.connect_to_relay("127.0.0.1", 9998)
+	await peer.relay_connected
+	print("Connected to relay!!!")
 
 func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("host"):
 		peer.host()
-		#nt.test_host()
-	if Input.is_action_just_pressed("join"):
-		peer.join($HostOID.text)
-		#nt.test_join($HostOID.text)
-	
-	#nt.poll_events()
-
+		
+		DisplayServer.clipboard_set(peer.get_online_id())
+		
+		add_child(PLAYER.instantiate())
+		
+		peer.peer_connected.connect(
+			func(pid):
+				print("Hello, ", pid)
+				add_child(PLAYER.instantiate(), true)
+		)
+	#if Input.is_action_just_pressed("join"):
+		#peer.join($HostOID.text)
 
 func _on_join_pressed() -> void:
-	pass
-	#nt.test_join($HostOID.text)
+	peer.join($HostOID.text)

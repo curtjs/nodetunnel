@@ -16,7 +16,7 @@ impl PacketType {
             0 => Some(PacketType::ConnectToRelay),
             1 => Some(PacketType::HostGame),
             2 => Some(PacketType::JoinGame),
-            3 => Some(PacketType::ConnectToRelay),
+            3 => Some(PacketType::PeerList),
             _ => None,
         }
     }

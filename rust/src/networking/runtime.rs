@@ -1,8 +1,12 @@
+use std::collections::HashMap;
 use std::fmt::format;
 use godot::global::{godot_error, godot_print};
 use tokio::{runtime::Runtime, sync::mpsc, task::JoinHandle};
 
 use crate::{networking::tcp_handler::TcpHandler, types::{commands::NetworkCommand, events::NetworkEvent, relay_state::RelayState}};
+use crate::networking::udp_handler::UdpHandler;
+use crate::types::packet_types::{PacketParser, PacketType, PeerInfo};
+use crate::utils::byte_utils::ByteUtils;
 
 pub struct NetworkingRuntime {
     out_cmds: mpsc::UnboundedSender<NetworkCommand>,
@@ -60,6 +64,7 @@ impl NetworkingRuntime {
 
 impl Drop for NetworkingRuntime {
     fn drop(&mut self) {
+        let _ = self.out_cmds.send(NetworkCommand::Disconnect);
         self.shutdown();
     }
 }
@@ -69,6 +74,11 @@ struct NetworkCore {
     out_events: mpsc::UnboundedSender<NetworkEvent>,
     state: RelayState,
     tcp_handler: TcpHandler,
+    udp_handler: Option<UdpHandler>,
+    relay_host: String,
+    relay_port: u16,
+    online_id_to_numeric: HashMap<String, i32>,
+    numeric_to_online_id: HashMap<i32, String>,
 }
 
 impl NetworkCore {
@@ -80,24 +90,73 @@ impl NetworkCore {
             in_cmds,
             out_events: out_events.clone(),
             state: RelayState::Disconnected,
-            // online_id: None,
             tcp_handler: TcpHandler::new(out_events),
+            udp_handler: None,
+            relay_host: String::new(),
+            relay_port: 0,
+            online_id_to_numeric: HashMap::new(),
+            numeric_to_online_id: HashMap::new(),
         }
     }
 
     async fn run(&mut self) {
         println!("Started NetworkCore");
-        
-        while let Some(command) = self.in_cmds.recv().await {
-            self.handle_command(command).await;
+
+        loop {
+            tokio::select! {
+                // Handle commands
+                command = self.in_cmds.recv() => {
+                    if let Some(command) = command {
+                        let should_shutdown = matches!(command, NetworkCommand::Disconnect);
+                        self.handle_command(command).await;
+                        if should_shutdown { break; }
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Poll TCP for peer list updates (only when hosting/joined)
+                _ = tokio::time::sleep(tokio::time::Duration::from_millis(100)), if matches!(self.state, RelayState::Hosting | RelayState::Joined) => {
+                    self.poll_tcp_messages().await;
+                }
+            }
         }
+
+        println!("NetworkCore shutting down");
+    }
+
+    async fn poll_tcp_messages(&mut self) {
+        let messages = self.tcp_handler.poll_messages().await;
+
+        for message in messages {
+            if let Err(e) = self.handle_tcp_message(message).await {
+                println!("Error handling TCP message: {}", e);
+            }
+        }
+    }
+
+    async fn handle_tcp_message(&mut self, data: Vec<u8>) -> Result<(), String> {
+        let packet_type = ByteUtils::unpack_u32(&data, 0).ok_or("Missing packet type")?;
+
+        match PacketType::from_u32(packet_type) {
+            Some(PacketType::PeerList) => {
+                let peer_list = PacketParser::parse_peers(&data)?;
+                self.update_peer_mapping(&peer_list.peers);
+                let _ = self.out_events.send(NetworkEvent::PeerListUpdated { peer_list: peer_list.peers });
+            }
+            _ => {
+                println!("Received unexpected TCP packet type: {}", packet_type);
+            }
+        }
+        Ok(())
     }
 
     async fn handle_command(&mut self, command: NetworkCommand) {
         match command {
             NetworkCommand::ConnectToRelay { host, port } => {
                 println!("Connecting to relay: {}:{}", host, port);
-
+                self.relay_host = host.clone();
+                self.relay_port = port;
                 self.handle_connect_to_relay(&host, port).await;
             }
             NetworkCommand::Host {online_id} => {
@@ -105,9 +164,13 @@ impl NetworkCore {
                 
                 match self.tcp_handler.send_host_request(&*online_id).await {
                     Ok(peer_list) => {
-                        self.state = RelayState::Hosting;
-                        
-                        let _ = self.out_events.send(NetworkEvent::Hosting { peer_list: peer_list.peers });
+                        if let Err(e) = self.init_udp(&online_id).await {
+                            println!("Failed to initialize UDP: {}", e);
+                        } else {
+                            self.state = RelayState::Hosting;
+                            self.update_peer_mapping(&peer_list.peers);
+                            let _ = self.out_events.send(NetworkEvent::Hosting { peer_list: peer_list.peers });
+                        }
                     }
                     Err(e) => {
                         println!("Failed to send host request: {}", e);
@@ -119,9 +182,13 @@ impl NetworkCore {
                 
                 match self.tcp_handler.send_join_request(&*online_id, &*host_online_id).await {
                     Ok(peer_list) => {
-                        self.state = RelayState::Joined;
-                        
-                        let _ = self.out_events.send(NetworkEvent::Joined { peer_list: peer_list.peers });
+                        if let Err(e) = self.init_udp(&online_id).await {
+                            println!("Failed to initialize UDP: {}", e);
+                        } else {
+                            self.state = RelayState::Joined;
+                            self.update_peer_mapping(&peer_list.peers);
+                            let _ = self.out_events.send(NetworkEvent::Joined { peer_list: peer_list.peers });
+                        }
                     }
                     Err(e) => {
                         println!("Failed to send join request: {}", e)
@@ -129,10 +196,17 @@ impl NetworkCore {
                 }
             }
             NetworkCommand::SendPacket { to_peer, data } => {
-                println!("Sending packet to peer {}: {} bytes", to_peer, data.len());
+                if let Some(udp_handler) = &mut self.udp_handler {
+                    if let Err(e) = udp_handler.send_packet(to_peer, data, &self.numeric_to_online_id).await {
+                        println!("Failed to send packet: {}", e);
+                    }
+                } else {
+                    println!("UDP not initialized, cannot send packet");
+                }
             }
             NetworkCommand::Disconnect => {
-                println!("Disconnecting")
+                println!("Shutting down networking core");
+                return;
             }
         }
     }
@@ -164,6 +238,20 @@ impl NetworkCore {
                 self.state = RelayState::Disconnected;
                 let _ = self.out_events.send(NetworkEvent::Error { message: format!("Connection failed: {}", e) });
             }
+        }
+    }
+    
+    async fn init_udp(&mut self, online_id: &str) -> Result<(), String> {
+        let mut udp_handler = UdpHandler::new(self.out_events.clone());
+        udp_handler.connect_udp(&self.relay_host, self.relay_port + 1, online_id.to_string()).await?;
+        self.udp_handler = Some(udp_handler);
+        Ok(())
+    }
+
+    fn update_peer_mapping(&mut self, peer_list: &[PeerInfo]) {
+        self.numeric_to_online_id.clear();
+        for peer in peer_list {
+            self.numeric_to_online_id.insert(peer.numeric_id as i32, peer.online_id.clone());
         }
     }
 }
