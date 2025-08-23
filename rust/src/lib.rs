@@ -1,6 +1,7 @@
 mod node_tunnel_peer;
-mod tcp;
-mod network;
+mod networking;
+mod channels;
+pub mod runtime;
 
 use godot::prelude::*;
 

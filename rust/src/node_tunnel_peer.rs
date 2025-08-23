@@ -1,13 +1,13 @@
-use std::thread::JoinHandle;
 use godot::classes::multiplayer_peer::{ConnectionStatus, TransferMode};
 use godot::classes::{IMultiplayerPeerExtension, MultiplayerPeerExtension};
 use godot::global::Error;
 use godot::prelude::*;
-use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::{Receiver, UnboundedSender};
-use crate::network::network_messages::{NetworkCommand, NetworkEvent};
-use crate::tcp::tcp_client::TcpClient;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::task::JoinHandle;
+use crate::channels::messages::{NetworkCommand, NetworkEvent};
+use crate::networking::client;
+use crate::runtime;
 
 #[derive(GodotClass)]
 #[class(tool, base=MultiplayerPeerExtension)]
@@ -15,12 +15,9 @@ pub struct NodeTunnelPeer {
     base: Base<MultiplayerPeerExtension>,
 
     // Networking
-    runtime: Runtime,
-    tcp_client: Option<TcpClient>,
-    tx: Option<UnboundedSender<NetworkCommand>>,
-    rx: Option<Receiver<NetworkEvent>>,
-
-    network_thread: Option<JoinHandle<()>>,
+    command_sender: Option<UnboundedSender<NetworkCommand>>,
+    event_receiver: Option<UnboundedReceiver<NetworkEvent>>,
+    networking_task: Option<JoinHandle<()>>,
 
     // Multiplayer peer state
     unique_id: i32,
@@ -34,15 +31,60 @@ pub struct NodeTunnelPeer {
 }
 
 #[godot_api]
+impl NodeTunnelPeer {
+    #[signal]
+    fn relay_connected(online_id: GString);
+    #[signal]
+    fn hosting();
+    #[signal]
+    fn joined();
+
+    #[func]
+    fn start_network(&mut self) {
+        if let Some(rt) = runtime::get_runtime() {
+            let (cmd_tx, cmd_rx) = mpsc::unbounded_channel::<NetworkCommand>();
+            let (event_tx, event_rx) = mpsc::unbounded_channel::<NetworkEvent>();
+
+            let handle = rt.spawn(client::networking_task(cmd_rx, event_tx));
+
+            self.command_sender = Some(cmd_tx);
+            self.event_receiver = Some(event_rx);
+            self.networking_task = Some(handle);
+        }
+    }
+
+    #[func]
+    fn connect_to_relay(&mut self, server_addr: String) {
+        self.send_command(NetworkCommand::ConnectToRelay(server_addr));
+    }
+
+    fn send_command(&mut self, network_cmd: NetworkCommand) {
+        if let Some(cmd) = &self.command_sender {
+            match cmd.send(network_cmd) {
+                Ok(_) => println!("Sent command!"),
+                Err(e) => println!("Failed to send command: {}", e)
+            }
+        }
+    }
+
+    fn handle_event(&mut self, event: NetworkEvent) {
+        match event {
+            NetworkEvent::ConnectedToRelay(online_id) => self.signals().relay_connected().emit(&online_id),
+            NetworkEvent::Error(e) => println!("Network thread error: {}", e)
+        }
+    }
+}
+
+#[godot_api]
 impl IMultiplayerPeerExtension for NodeTunnelPeer {
     fn init(base: Base<MultiplayerPeerExtension>) -> Self {
         Self {
             base,
-            runtime: Runtime::new().unwrap(),
-            tcp_client: None,
-            tx: None,
-            rx: None,
-            network_thread: None,
+
+            command_sender: None,
+            event_receiver: None,
+            networking_task: None,
+
             unique_id: 0,
             connection_status: ConnectionStatus::CONNECTING, // CONNECTION_DISCONNECTED
             target_peer: 0,
@@ -105,7 +147,17 @@ impl IMultiplayerPeerExtension for NodeTunnelPeer {
     }
 
     fn poll(&mut self) {
+        let mut events_to_handle = Vec::new();
 
+        if let Some(events) = &mut self.event_receiver {
+            while let Ok(event) = events.try_recv() {
+                events_to_handle.push(event);
+            }
+        }
+
+        for event in events_to_handle {
+            self.handle_event(event);
+        }
     }
 
     fn close(&mut self) {
@@ -126,33 +178,5 @@ impl IMultiplayerPeerExtension for NodeTunnelPeer {
 
     fn get_connection_status(&self) -> ConnectionStatus {
         self.connection_status
-    }
-}
-
-#[godot_api]
-impl NodeTunnelPeer {
-    #[signal]
-    fn relay_connected(online_id: GString);
-    #[signal]
-    fn hosting();
-    #[signal]
-    fn joined();
-
-    #[func]
-    pub fn connect_to_relay(&mut self, relay_address: String, relay_port: u16) {
-        let (cmd_tx, mut cmd_rx) = mpsc::unbounded_channel();
-        
-        let tcp_client = TcpClient::new(relay_address, relay_port);
-
-        self.runtime.spawn(async move {
-            match tcp_client.connect().await {
-                Ok(_) => {
-                    println!("Connected to TCP!");
-                },
-                Err(e) => {
-                    println!("Failed to connect to TCP: {}", e);
-                }
-            }
-        });
     }
 }
