@@ -57,6 +57,11 @@ impl NodeTunnelPeer {
     fn connect_to_relay(&mut self, server_addr: String) {
         self.send_command(NetworkCommand::ConnectToRelay(server_addr));
     }
+    
+    #[func]
+    fn host(&mut self) {
+        self.send_command(NetworkCommand::Host);
+    }
 
     fn send_command(&mut self, network_cmd: NetworkCommand) {
         if let Some(cmd) = &self.command_sender {

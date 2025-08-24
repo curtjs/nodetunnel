@@ -1,5 +1,6 @@
 pub enum NetworkCommand {
-    ConnectToRelay(String)
+    ConnectToRelay(String),
+    Host,
 }
 
 pub enum NetworkEvent {
