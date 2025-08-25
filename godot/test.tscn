@@ -10,14 +10,22 @@ offset_right = 381.0
 offset_bottom = 54.0
 
 [node name="Join" type="Button" parent="."]
-offset_left = 417.0
-offset_top = 12.0
-offset_right = 455.0
-offset_bottom = 43.0
+offset_left = 144.0
+offset_top = 67.0
+offset_right = 182.0
+offset_bottom = 98.0
 text = "Join"
+
+[node name="Host" type="Button" parent="."]
+offset_left = 4.0
+offset_top = 67.0
+offset_right = 98.0
+offset_bottom = 98.0
+text = "Host Game"
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
 _spawnable_scenes = PackedStringArray("uid://df1twqo5ukye7")
 spawn_path = NodePath("..")
 
 [connection signal="pressed" from="Join" to="." method="_on_join_pressed"]
+[connection signal="pressed" from="Host" to="." method="_on_host_pressed"]

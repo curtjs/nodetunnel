@@ -2,7 +2,7 @@ pub enum PacketType {
     Connect = 0,
     Host = 1,
     Join = 2,
-    RoomConnect = 3,
+    ConnectedToRoom = 3,
 }
 
 impl PacketType {
@@ -11,7 +11,7 @@ impl PacketType {
             0 => Some(PacketType::Connect),
             1 => Some(PacketType::Host),
             2 => Some(PacketType::Join),
-            3 => Some(PacketType::RoomConnect),
+            3 => Some(PacketType::ConnectedToRoom),
             _ => None,
         }
     }

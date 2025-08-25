@@ -47,6 +47,9 @@ async fn handle_command(client: &mut Client, cmd: NetworkCommand) -> anyhow::Res
         NetworkCommand::Host => {
             client.send_host_req().await?;
         }
+        NetworkCommand::Join(host_online_id) => {
+            client.send_join_req(host_online_id).await?;
+        }
     }
 
     Ok(())
@@ -86,7 +89,7 @@ impl Client {
 
     pub async fn handle_connect_res(&mut self, packet: &[u8]) -> anyhow::Result<()> {
         let (online_id, _) = ByteUtils::unpack_str(&packet, 0)
-            .ok_or(anyhow!("Invalid UTF-8"))?;
+            .ok_or(anyhow!("Invalid UTF-8 received"))?;
 
         if let ClientState::Connecting { stream } = mem::replace(&mut self.state, ClientState::Disconnected) {
             self.state = ClientState::Connected { stream, online_id: online_id.clone() }
@@ -102,6 +105,23 @@ impl Client {
         let packet = PacketBuilder::build_host();
         self.send_packet(packet).await?;
         
+        Ok(())
+    }
+    
+    pub async fn send_join_req(&mut self, host_online_id: String) -> anyhow::Result<()> {
+        let packet = PacketBuilder::build_join(host_online_id);
+        self.send_packet(packet).await?;
+        
+        Ok(())
+    }
+
+    pub async fn handle_connected_to_room_res(&mut self, packet: &[u8]) -> anyhow::Result<()> {
+        let numeric_id = ByteUtils::unpack_u32(&packet, 0)
+            .ok_or(anyhow!("Invalid numeric ID received"))?;
+
+        self.event_sender.send(NetworkEvent::ConnectedToRoom(numeric_id))
+            .map_err(|e| anyhow!("Failed to send event to main thread: {}", e))?;
+
         Ok(())
     }
 
@@ -127,7 +147,23 @@ impl Client {
                 }
             }
             ClientState::Connected { .. } => {
-                
+                let packet = self.read_packet().await?;
+                let mut offset = 0;
+
+                let packet_type_u32 = ByteUtils::unpack_u32(&packet, offset)
+                    .ok_or(anyhow!("Failed to read packet type"))?;
+
+                offset += 4;
+
+                let packet_type = PacketType::from_u32(packet_type_u32)
+                    .ok_or(anyhow!("Received invalid packet type"))?;
+
+                match packet_type {
+                    PacketType::ConnectedToRoom => {
+                        self.handle_connected_to_room_res(&packet[offset..]).await?;
+                    }
+                    _ => return Err(anyhow!("Unexpected packet type in connected state")),
+                }
             }
             _ => {}
         }

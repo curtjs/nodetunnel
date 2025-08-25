@@ -11,4 +11,10 @@ impl PacketBuilder {
     pub fn build_host() -> Vec<u8> {
         ByteUtils::pack_u32(PacketType::Host as u32)
     }
+
+    pub fn build_join(host_online_id: String) -> Vec<u8> {
+        let mut packet = ByteUtils::pack_u32(PacketType::Join as u32);
+        packet.extend(ByteUtils::pack_str(host_online_id.as_str()));
+        packet
+    }
 }

@@ -18,6 +18,8 @@ pub struct NodeTunnelPeer {
     command_sender: Option<UnboundedSender<NetworkCommand>>,
     event_receiver: Option<UnboundedReceiver<NetworkEvent>>,
     networking_task: Option<JoinHandle<()>>,
+    #[var]
+    online_id: GString,
 
     // Multiplayer peer state
     unique_id: i32,
@@ -62,6 +64,11 @@ impl NodeTunnelPeer {
     fn host(&mut self) {
         self.send_command(NetworkCommand::Host);
     }
+    
+    #[func]
+    fn join(&mut self, host_online_id: GString) {
+        self.send_command(NetworkCommand::Join(host_online_id.to_string()))
+    }
 
     fn send_command(&mut self, network_cmd: NetworkCommand) {
         if let Some(cmd) = &self.command_sender {
@@ -74,8 +81,15 @@ impl NodeTunnelPeer {
 
     fn handle_event(&mut self, event: NetworkEvent) {
         match event {
-            NetworkEvent::ConnectedToRelay(online_id) => self.signals().relay_connected().emit(&online_id),
-            NetworkEvent::Error(e) => println!("Network thread error: {}", e)
+            NetworkEvent::ConnectedToRelay(online_id) => {
+                self.signals().relay_connected().emit(&online_id);
+                self.online_id = online_id.to_godot();
+            },
+            NetworkEvent::Error(e) => println!("Network thread error: {}", e),
+            NetworkEvent::ConnectedToRoom(numeric_id) => {
+                self.unique_id = numeric_id as i32;
+                println!("Connected to room with NID of {}", self.unique_id);
+            }
         }
     }
 }
@@ -89,6 +103,7 @@ impl IMultiplayerPeerExtension for NodeTunnelPeer {
             command_sender: None,
             event_receiver: None,
             networking_task: None,
+            online_id: "".to_godot(),
 
             unique_id: 0,
             connection_status: ConnectionStatus::CONNECTING, // CONNECTION_DISCONNECTED
