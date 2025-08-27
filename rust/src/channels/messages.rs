@@ -8,4 +8,5 @@ pub enum NetworkEvent {
     ConnectedToRelay(String),
     Error(String),
     ConnectedToRoom(u32),
+    PeerList(Vec<u32>)
 }

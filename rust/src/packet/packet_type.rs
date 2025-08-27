@@ -3,6 +3,7 @@ pub enum PacketType {
     Host = 1,
     Join = 2,
     ConnectedToRoom = 3,
+    PeerList = 4,
 }
 
 impl PacketType {
@@ -12,6 +13,7 @@ impl PacketType {
             1 => Some(PacketType::Host),
             2 => Some(PacketType::Join),
             3 => Some(PacketType::ConnectedToRoom),
+            4 => Some(PacketType::PeerList),
             _ => None,
         }
     }

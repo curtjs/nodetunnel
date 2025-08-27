@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::mem;
 use anyhow::{anyhow, Error};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -107,11 +108,11 @@ impl Client {
         
         Ok(())
     }
-    
+
     pub async fn send_join_req(&mut self, host_online_id: String) -> anyhow::Result<()> {
         let packet = PacketBuilder::build_join(host_online_id);
         self.send_packet(packet).await?;
-        
+
         Ok(())
     }
 
@@ -121,6 +122,31 @@ impl Client {
 
         self.event_sender.send(NetworkEvent::ConnectedToRoom(numeric_id))
             .map_err(|e| anyhow!("Failed to send event to main thread: {}", e))?;
+
+        Ok(())
+    }
+
+    pub async fn handle_peer_list(&mut self, packet: &[u8]) -> anyhow::Result<()> {
+        let mut offset = 0;
+
+        let peer_count = ByteUtils::unpack_u32(packet, offset)
+            .ok_or(anyhow!("Invalid peer count"))? as usize;
+
+        offset += 4;
+
+        let mut peers: Vec<u32> = Vec::new();
+
+        for _ in 0..peer_count {
+            let numeric_id = ByteUtils::unpack_u32(packet, offset)
+                .ok_or(anyhow!("Invalid numeric ID"))?;
+
+            peers.push(numeric_id);
+
+            offset += 4;
+        }
+
+        self.event_sender.send(NetworkEvent::PeerList(peers))
+            .map_err(|e| anyhow!("Failed to send peer list event: {}", e))?;
 
         Ok(())
     }
@@ -161,6 +187,9 @@ impl Client {
                 match packet_type {
                     PacketType::ConnectedToRoom => {
                         self.handle_connected_to_room_res(&packet[offset..]).await?;
+                    }
+                    PacketType::PeerList => {
+                        self.handle_peer_list(&packet[offset..]).await?;
                     }
                     _ => return Err(anyhow!("Unexpected packet type in connected state")),
                 }

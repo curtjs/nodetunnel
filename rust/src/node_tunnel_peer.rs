@@ -30,6 +30,9 @@ pub struct NodeTunnelPeer {
 
     // Packet management
     incoming_packets: Vec<u8>,
+
+    // Peer management
+    connected_peers: Vec<u32>,
 }
 
 #[godot_api]
@@ -64,7 +67,7 @@ impl NodeTunnelPeer {
     fn host(&mut self) {
         self.send_command(NetworkCommand::Host);
     }
-    
+
     #[func]
     fn join(&mut self, host_online_id: GString) {
         self.send_command(NetworkCommand::Join(host_online_id.to_string()))
@@ -89,8 +92,52 @@ impl NodeTunnelPeer {
             NetworkEvent::ConnectedToRoom(numeric_id) => {
                 self.unique_id = numeric_id as i32;
                 println!("Connected to room with NID of {}", self.unique_id);
+            },
+            NetworkEvent::PeerList(new_peer_list) => {
+                self.handle_peer_list_update(new_peer_list);
             }
         }
+    }
+
+    fn handle_peer_list_update(&mut self, new_peer_ids: Vec<u32>) {
+        let old_peers = &self.connected_peers;
+
+        let mut disconnected_peers = Vec::new();
+        let mut connected_peers = Vec::new();
+
+        // Find disconnected peers
+        for &old_peer_id in old_peers {
+            if !new_peer_ids.contains(&old_peer_id) && old_peer_id != self.unique_id as u32 {
+                println!("Peer {} disconnected", old_peer_id);
+                disconnected_peers.push(old_peer_id);
+            }
+        }
+
+        // Find connected peers
+        for &new_peer_id in &new_peer_ids {
+            if !old_peers.contains(&new_peer_id) && new_peer_id != self.unique_id as u32 {
+                println!("Peer {} connected", new_peer_id);
+                connected_peers.push(new_peer_id);
+            }
+        }
+
+        // Update peer list first
+        self.connected_peers = new_peer_ids;
+
+        if self.connection_status == ConnectionStatus::CONNECTING {
+            self.connection_status = ConnectionStatus::CONNECTED;
+        }
+
+        // Now emit all signals with a single base_mut() call
+        let mut base = self.base_mut();
+        for peer_id in disconnected_peers {
+            base.emit_signal("peer_disconnected", &[peer_id.to_variant()]);
+        }
+        for peer_id in connected_peers {
+            base.emit_signal("peer_connected", &[peer_id.to_variant()]);
+        }
+
+        println!("Peer list updated");
     }
 }
 
@@ -111,6 +158,8 @@ impl IMultiplayerPeerExtension for NodeTunnelPeer {
             transfer_mode: TransferMode::RELIABLE,     // TRANSFER_MODE_RELIABLE
             transfer_channel: 0,
             incoming_packets: Vec::new(),
+
+            connected_peers: Vec::new(),
         }
     }
 
