@@ -1,13 +1,16 @@
+use std::sync::Arc;
 use godot::classes::multiplayer_peer::{ConnectionStatus, TransferMode};
 use godot::classes::{IMultiplayerPeerExtension, MultiplayerPeerExtension};
 use godot::global::Error;
 use godot::prelude::*;
+use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
 use crate::channels::messages::{NetworkCommand, NetworkEvent};
 use crate::networking::client;
 use crate::runtime;
+use crate::utils::byte_utils::ByteUtils;
 
 #[derive(GodotClass)]
 #[class(tool, base=MultiplayerPeerExtension)]
@@ -18,6 +21,8 @@ pub struct NodeTunnelPeer {
     command_sender: Option<UnboundedSender<NetworkCommand>>,
     event_receiver: Option<UnboundedReceiver<NetworkEvent>>,
     networking_task: Option<JoinHandle<()>>,
+    udp_socket: Option<Arc<UdpSocket>>,
+    server_udp_addr: String,
     #[var]
     online_id: GString,
 
@@ -55,7 +60,43 @@ impl NodeTunnelPeer {
             self.command_sender = Some(cmd_tx);
             self.event_receiver = Some(event_rx);
             self.networking_task = Some(handle);
+
+            if let Some(rt) = runtime::get_runtime() {
+                let socket = rt.block_on(async {
+                    UdpSocket::bind("0.0.0.0:0").await.ok()
+                });
+
+                if let Some(socket) = socket {
+                    self.udp_socket = Some(Arc::new(socket));
+                    self.server_udp_addr = "127.0.0.1:8081".to_string();
+                }
+            }
         }
+    }
+
+    fn send_udp_packet(&self, target_peer: i32, data: &[u8]) -> Result<(), String> {
+        let socket = self.udp_socket.as_ref().ok_or("UDP not initialized")?;
+        let rt = runtime::get_runtime().ok_or("Runtime not available")?;
+
+        let target_id = if target_peer == 0 { "0".to_string() } else { target_peer.to_string() };
+
+        rt.spawn({
+            let socket = socket.clone();
+            let server_addr = self.server_udp_addr.clone();
+            let sender_id = self.online_id.to_string();
+            let data = data.to_vec();
+
+            async move {
+                let mut packet = Vec::new();
+                packet.extend(ByteUtils::pack_str(&sender_id));
+                packet.extend(ByteUtils::pack_str(&target_id));
+                packet.extend_from_slice(&data);
+
+                let _ = socket.send_to(&packet, &server_addr).await;
+            }
+        });
+
+        Ok(())
     }
 
     #[func]
@@ -150,6 +191,8 @@ impl IMultiplayerPeerExtension for NodeTunnelPeer {
             command_sender: None,
             event_receiver: None,
             networking_task: None,
+            udp_socket: None,
+            server_udp_addr: "127.0.0.1:8081".to_string(),
             online_id: "".to_godot(),
 
             unique_id: 0,
@@ -175,8 +218,13 @@ impl IMultiplayerPeerExtension for NodeTunnelPeer {
         PackedByteArray::new()
     }
 
-    fn put_packet_script(&mut self, _p_buffer: PackedByteArray) -> Error {
-        Error::OK
+    fn put_packet_script(&mut self, p_buffer: PackedByteArray) -> Error {
+        let data: &[u8] = p_buffer.as_slice();
+
+        match self.send_udp_packet(self.target_peer, data) {
+            Ok(_) => Error::OK,
+            Err(_) => Error::ERR_UNCONFIGURED,
+        }
     }
 
     fn get_packet_channel(&self) -> i32 {
@@ -226,6 +274,14 @@ impl IMultiplayerPeerExtension for NodeTunnelPeer {
 
         for event in events_to_handle {
             self.handle_event(event);
+        }
+
+        if let Some(socket) = &self.udp_socket {
+            let rt = runtime::get_runtime();
+            if let Some(rt) = rt {
+                // Check for received packets (non-blocking)
+                // You'll need to implement a UDP receive queue similar to TCP events
+            }
         }
     }
 
