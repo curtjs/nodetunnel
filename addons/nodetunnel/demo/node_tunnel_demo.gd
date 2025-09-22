@@ -14,7 +14,7 @@ func _ready() -> void:
 	multiplayer.multiplayer_peer = peer
 	
 	# Connect to the public relay
-	peer.connect_to_relay("localhost", 9998)
+	peer.connect_to_relay("relay.nodetunnel.io", 9998)
 	
 	# Wait until we have connected to the relay
 	await peer.relay_connected
