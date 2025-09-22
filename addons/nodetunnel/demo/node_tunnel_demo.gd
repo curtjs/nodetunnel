@@ -35,7 +35,6 @@ func _ready() -> void:
 
 func _update_room_list() -> void:
 	var rooms = await peer.room_list()
-	print(rooms)
 	
 	for button in %PublicRooms.get_children():
 		button.queue_free()
@@ -50,8 +49,13 @@ func _update_room_list() -> void:
 func _on_host_pressed() -> void:
 	print("Online ID: ", peer.online_id)
 	
+	var flags = RoomFlags.RoomFlags.NONE
+	
+	if not %Public.button_pressed:
+		flags |= RoomFlags.RoomFlags.UNLISTED
+	
 	# Host a game, must be done *after* relay connection is made
-	peer.host(RoomFlags.RoomFlags.NONE)
+	peer.host(flags)
 	
 	# Copy online id to clipboard
 	DisplayServer.clipboard_set(peer.online_id)
