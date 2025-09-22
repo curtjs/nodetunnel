@@ -78,31 +78,38 @@ func send_room_list(tcp: StreamPeerTCP) -> void:
 
 ## Handles response for room list
 ## Returns list of public rooms
-func _handle_room_list_res(data: PackedByteArray) -> Array[String]:
+func _handle_room_list_res(data: PackedByteArray) -> Dictionary[String, String]:
 	var room_count = ByteUtils.unpack_u32(data, 0)
-	var rooms: Array[String] = []
+	var rooms: Dictionary[String, String] = {}
 	
 	var offset = 4
 	
 	for _room_index in room_count:
-		var room_length = ByteUtils.unpack_u32(data, offset)
-		
+		var room_id_length = ByteUtils.unpack_u32(data, offset)
 		offset += 4
+		var room_id = data.slice(offset, offset + room_id_length).get_string_from_utf8()
+		offset += room_id_length
 		
-		var room = data.slice(offset, offset + room_length).get_string_from_utf8()
+		var room_name_length = ByteUtils.unpack_u32(data, offset)
+		offset += 4
+		var room_name = data.slice(offset, offset + room_name_length).get_string_from_utf8()
+		offset += room_name_length
 		
-		offset += room_length
-		
-		rooms.append(room)
+		rooms[room_id] = room_name
 	
 	return rooms
 
 ## Sends a host request to the server
-func send_host(tcp: StreamPeerTCP, oid: String, flags: RoomFlags.RoomFlags) -> void:
+func send_host(tcp: StreamPeerTCP, oid: String, name: String, flags: RoomFlags.RoomFlags) -> void:
 	var msg = PackedByteArray()
 	msg.append_array(ByteUtils.pack_u32(PacketType.HOST))
+	
 	msg.append_array(ByteUtils.pack_u32(oid.length()))
 	msg.append_array(oid.to_utf8_buffer())
+	
+	msg.append_array(ByteUtils.pack_u32(name.length()))
+	msg.append_array(name.to_utf8_buffer())
+	
 	msg.append_array(ByteUtils.pack_u32(flags))
 	
 	tcp.put_data(ByteUtils.pack_u32(msg.size()))

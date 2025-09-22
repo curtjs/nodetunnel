@@ -31,6 +31,7 @@ alignment = 1
 
 [node name="VBoxContainer" type="VBoxContainer" parent="UI/Control/ConnectionControls"]
 layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="Label" type="Label" parent="UI/Control/ConnectionControls/VBoxContainer"]
 layout_mode = 2
@@ -67,9 +68,10 @@ layout_mode = 2
 size_flags_horizontal = 4
 alignment = 1
 
-[node name="Host" type="Button" parent="UI/Control/ConnectionControls/VboxContainer2"]
+[node name="RoomName" type="LineEdit" parent="UI/Control/ConnectionControls/VboxContainer2"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "Host"
+placeholder_text = "Room Name"
 
 [node name="Public" type="CheckButton" parent="UI/Control/ConnectionControls/VboxContainer2"]
 unique_name_in_owner = true
@@ -77,6 +79,10 @@ layout_mode = 2
 size_flags_horizontal = 6
 button_pressed = true
 text = "Public"
+
+[node name="Host" type="Button" parent="UI/Control/ConnectionControls/VboxContainer2"]
+layout_mode = 2
+text = "Host"
 
 [node name="HSeparator" type="HSeparator" parent="UI/Control/ConnectionControls/VboxContainer2"]
 layout_mode = 2

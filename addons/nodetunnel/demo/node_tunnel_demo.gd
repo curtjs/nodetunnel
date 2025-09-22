@@ -39,11 +39,12 @@ func _update_room_list() -> void:
 	for button in %PublicRooms.get_children():
 		button.queue_free()
 	
-	for room in rooms:
+	for room_id in rooms:
 		var button = Button.new()
-		button.text = room
+		button.name = room_id
+		button.text = rooms[room_id]
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.pressed.connect(_join_room.bind(room))
+		button.pressed.connect(_join_room.bind(room_id))
 		%PublicRooms.add_child(button)
 
 func _on_host_pressed() -> void:
@@ -55,7 +56,7 @@ func _on_host_pressed() -> void:
 		flags |= RoomFlags.RoomFlags.UNLISTED
 	
 	# Host a game, must be done *after* relay connection is made
-	peer.host(flags)
+	peer.host(%RoomName.text, flags)
 	
 	# Copy online id to clipboard
 	DisplayServer.clipboard_set(peer.online_id)
