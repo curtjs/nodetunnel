@@ -14,10 +14,12 @@ func _ready() -> void:
 	multiplayer.multiplayer_peer = peer
 	
 	# Connect to the public relay
-	peer.connect_to_relay("relay.nodetunnel.io", 9998)
+	peer.connect_to_relay("localhost", 9998)
 	
 	# Wait until we have connected to the relay
 	await peer.relay_connected
+	
+	_update_room_list()
 	
 	# Attach peer_connected signal
 	peer.peer_connected.connect(_add_player)
@@ -31,12 +33,25 @@ func _ready() -> void:
 	# At this point, we can access the online ID that the server generated for us
 	%IDLabel.text = "Online ID: " + peer.online_id
 
+func _update_room_list() -> void:
+	var rooms = await peer.room_list()
+	print(rooms)
+	
+	for button in %PublicRooms.get_children():
+		button.queue_free()
+	
+	for room in rooms:
+		var button = Button.new()
+		button.text = room
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(_join_room.bind(room))
+		%PublicRooms.add_child(button)
 
 func _on_host_pressed() -> void:
 	print("Online ID: ", peer.online_id)
 	
 	# Host a game, must be done *after* relay connection is made
-	peer.host()
+	peer.host(RoomFlags.RoomFlags.NONE)
 	
 	# Copy online id to clipboard
 	DisplayServer.clipboard_set(peer.online_id)
@@ -53,11 +68,13 @@ func _on_host_pressed() -> void:
 	# Show leave room button
 	%LeaveRoom.show()
 
-
 func _on_join_pressed() -> void:
+	_join_room(%HostID.text)
+
+func _join_room(host_id: String) -> void:
 	# Join a game, must be done *after* relay connection is made
 	# Requires the online ID of the host peer
-	peer.join(%HostID.text)
+	peer.join(host_id)
 	
 	# Wait until peer has finished joining
 	await peer.joined
@@ -101,3 +118,7 @@ func _cleanup_room() -> void:
 	
 	# Show the main menu again
 	%ConnectionControls.show()
+
+
+func _on_refresh_pressed() -> void:
+	_update_room_list()

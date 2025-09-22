@@ -111,8 +111,13 @@ func connect_to_relay(node_tunnel_address: String, node_tunnel_port: int) -> voi
 	_log("Connected to relay with OID: " + online_id)
 	relay_connected.emit(online_id)
 
+# Get list of public rooms
+func room_list() -> Array[String]:
+	_packet_manager.send_room_list(_tcp_handler.tcp)
+	return await _packet_manager.room_list_res
+
 ## Start hosting a multiplayer session
-func host() -> void:
+func host(flags: RoomFlags.RoomFlags) -> void:
 	if connection_state != ConnectionState.CONNECTED:
 		_log_error("Must be connected to relay before hosting")
 		return
@@ -124,7 +129,7 @@ func host() -> void:
 	_log("UDP Connected")
 	
 	_log("Sending TCP Host Request")
-	_packet_manager.send_host(_tcp_handler.tcp, online_id)
+	_packet_manager.send_host(_tcp_handler.tcp, online_id, flags)
 	await _packet_manager.peer_list_res
 	_log("Peer List Received")
 	

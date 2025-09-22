@@ -21,13 +21,15 @@ signal host_res
 signal join_res
 signal peer_list_res(nid_to_oid: Dictionary[int, String])
 signal leave_room_res
+signal room_list_res(rooms: Array[String])
 
 enum PacketType {
 	CONNECT,
 	HOST,
 	JOIN,
 	PEERLIST,
-	LEAVE_ROOM
+	LEAVE_ROOM,
+	ROOM_LIST
 }
 
 func handle_msg(data: PackedByteArray) -> void:
@@ -47,6 +49,9 @@ func handle_msg(data: PackedByteArray) -> void:
 			peer_list_res.emit(p_list)
 		PacketType.LEAVE_ROOM:
 			leave_room_res.emit()
+		PacketType.ROOM_LIST:
+			var rooms = _handle_room_list_res(payload)
+			room_list_res.emit(rooms)
 
 ## Sends a connect request to the server
 func send_conect(tcp: StreamPeerTCP) -> void:
@@ -63,12 +68,42 @@ func _handle_connect_res(data: PackedByteArray) -> String:
 	var oid = data.slice(4, 4 + oid_len).get_string_from_utf8()
 	return oid
 
+## Sends request for list of public rooms
+func send_room_list(tcp: StreamPeerTCP) -> void:
+	var msg = PackedByteArray()
+	msg.append_array(ByteUtils.pack_u32(PacketType.ROOM_LIST))
+	
+	tcp.put_data(ByteUtils.pack_u32(msg.size()))
+	tcp.put_data(msg)
+
+## Handles response for room list
+## Returns list of public rooms
+func _handle_room_list_res(data: PackedByteArray) -> Array[String]:
+	var room_count = ByteUtils.unpack_u32(data, 0)
+	var rooms: Array[String] = []
+	
+	var offset = 4
+	
+	for _room_index in room_count:
+		var room_length = ByteUtils.unpack_u32(data, offset)
+		
+		offset += 4
+		
+		var room = data.slice(offset, offset + room_length).get_string_from_utf8()
+		
+		offset += room_length
+		
+		rooms.append(room)
+	
+	return rooms
+
 ## Sends a host request to the server
-func send_host(tcp: StreamPeerTCP, oid: String) -> void:
+func send_host(tcp: StreamPeerTCP, oid: String, flags: RoomFlags.RoomFlags) -> void:
 	var msg = PackedByteArray()
 	msg.append_array(ByteUtils.pack_u32(PacketType.HOST))
 	msg.append_array(ByteUtils.pack_u32(oid.length()))
 	msg.append_array(oid.to_utf8_buffer())
+	msg.append_array(ByteUtils.pack_u32(flags))
 	
 	tcp.put_data(ByteUtils.pack_u32(msg.size()))
 	tcp.put_data(msg)
