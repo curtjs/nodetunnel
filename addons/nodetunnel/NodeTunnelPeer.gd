@@ -112,7 +112,7 @@ func connect_to_relay(node_tunnel_address: String, node_tunnel_port: int) -> voi
 	relay_connected.emit(online_id)
 
 # Get list of public rooms
-func room_list() -> Dictionary[String, String]:
+func room_list() -> Dictionary[String, Room]:
 	_packet_manager.send_room_list(_tcp_handler.tcp)
 	return await _packet_manager.room_list_res
 

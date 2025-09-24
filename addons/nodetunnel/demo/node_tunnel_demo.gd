@@ -39,12 +39,12 @@ func _update_room_list() -> void:
 	for button in %PublicRooms.get_children():
 		button.queue_free()
 	
-	for room_id in rooms:
+	for room in rooms.values():
 		var button = Button.new()
-		button.name = room_id
-		button.text = rooms[room_id]
+		button.name = room.id
+		button.text = room.name
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.pressed.connect(_join_room.bind(room_id))
+		button.pressed.connect(_join_room.bind(room.id))
 		%PublicRooms.add_child(button)
 
 func _on_host_pressed() -> void:

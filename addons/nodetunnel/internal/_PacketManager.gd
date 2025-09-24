@@ -78,24 +78,29 @@ func send_room_list(tcp: StreamPeerTCP) -> void:
 
 ## Handles response for room list
 ## Returns list of public rooms
-func _handle_room_list_res(data: PackedByteArray) -> Dictionary[String, String]:
+func _handle_room_list_res(data: PackedByteArray) -> Dictionary[String, Room]:
 	var room_count = ByteUtils.unpack_u32(data, 0)
-	var rooms: Dictionary[String, String] = {}
+	var rooms: Dictionary[String, Room] = {}
 	
 	var offset = 4
 	
 	for _room_index in room_count:
+		var room = Room.new()
+		
 		var room_id_length = ByteUtils.unpack_u32(data, offset)
 		offset += 4
-		var room_id = data.slice(offset, offset + room_id_length).get_string_from_utf8()
+		room.id = data.slice(offset, offset + room_id_length).get_string_from_utf8()
 		offset += room_id_length
 		
 		var room_name_length = ByteUtils.unpack_u32(data, offset)
 		offset += 4
-		var room_name = data.slice(offset, offset + room_name_length).get_string_from_utf8()
+		room.name = data.slice(offset, offset + room_name_length).get_string_from_utf8()
 		offset += room_name_length
 		
-		rooms[room_id] = room_name
+		room.flags = ByteUtils.unpack_u32(data, offset)
+		offset += 4
+		
+		rooms[room.id] = room
 	
 	return rooms
 
