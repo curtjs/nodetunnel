@@ -1,3 +1,9 @@
+# This Repo Has Been Archived
+As of 1/16/26, this version of NodeTunnel is no longer in development. The relay server will remain up until 2/16/26.
+
+### Please consider switching to [the Rust rewrite of NodeTunnel.](https://github.com/NodeTunnel/godot-plugin)
+**It is more performant, has far more features, and is receiving consistent updates and bug fixes.**
+
 # NodeTunnel 🚇
 
 **Easy P2P multiplayer networking for Godot through relay servers**
