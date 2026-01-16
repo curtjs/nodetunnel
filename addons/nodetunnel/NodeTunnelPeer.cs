@@ -402,6 +402,36 @@ public partial class NodeTunnelPeer
 
 
     /// <summary>
+    /// Target peer
+    /// </summary>
+    public int TargetPeer
+    {
+        get => Get<int>(PropertyName.TargetPeer);
+        set => Set(PropertyName.TargetPeer, value);
+    }
+
+
+    /// <summary>
+    /// <see cref="MultiplayerApi"/> transfer mode
+    /// </summary>
+    public MultiplayerPeer.TransferModeEnum CurrentTransferMode
+    {
+        get => Get<MultiplayerPeer.TransferModeEnum>(PropertyName.CurrentTransferMode);
+        set => Set(PropertyName.CurrentTransferMode, (int)value);
+    }
+
+
+     /// <summary>
+    /// <see cref="MultiplayerApi"/> transfer channel
+    /// </summary>
+    public int CurrentTransferChannel
+    {
+        get => Get<int>(PropertyName.CurrentTransferChannel);
+        set => Set(PropertyName.CurrentTransferChannel, value);
+    }
+
+
+    /// <summary>
     /// debug mode cool
     /// </summary>
     public bool DebugEnabled
