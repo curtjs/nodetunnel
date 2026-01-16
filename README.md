@@ -71,7 +71,7 @@ The relay forwards packets between players, so everyone can connect regardless o
 I provide a free relay server for testing:
 
 - **Host**: `relay.nodetunnel.io:9998`
-- **Uptime**: See [nodetunnel.io](nodetunnel.io)
+- **Uptime**: See [nodetunnel.io](https://nodetunnel.io)
 
 **Note**: Don't rely on this for anything important! Server source code will be available soon for self-hosting.
 
