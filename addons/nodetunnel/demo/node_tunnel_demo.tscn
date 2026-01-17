@@ -19,38 +19,84 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ConnectionControls" type="VBoxContainer" parent="UI/Control"]
+[node name="ConnectionControls" type="HBoxContainer" parent="UI/Control"]
 unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -80.5
-offset_top = -64.0
-offset_right = 80.5
-offset_bottom = 64.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+alignment = 1
 
-[node name="Host" type="Button" parent="UI/Control/ConnectionControls"]
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/Control/ConnectionControls"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="UI/Control/ConnectionControls/VBoxContainer"]
+layout_mode = 2
+text = "Public Rooms:"
+
+[node name="HSeparator" type="HSeparator" parent="UI/Control/ConnectionControls/VBoxContainer"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="UI/Control/ConnectionControls/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="PublicRooms" type="VBoxContainer" parent="UI/Control/ConnectionControls/VBoxContainer/ScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Button" type="Button" parent="UI/Control/ConnectionControls/VBoxContainer/ScrollContainer/PublicRooms"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ABCD1234"
+
+[node name="HSeparator2" type="HSeparator" parent="UI/Control/ConnectionControls/VBoxContainer"]
+layout_mode = 2
+
+[node name="Refresh" type="Button" parent="UI/Control/ConnectionControls/VBoxContainer"]
+layout_mode = 2
+text = "Refresh"
+
+[node name="VboxContainer2" type="VBoxContainer" parent="UI/Control/ConnectionControls"]
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+
+[node name="RoomName" type="LineEdit" parent="UI/Control/ConnectionControls/VboxContainer2"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Room Name"
+
+[node name="Public" type="CheckButton" parent="UI/Control/ConnectionControls/VboxContainer2"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 6
+button_pressed = true
+text = "Public"
+
+[node name="Host" type="Button" parent="UI/Control/ConnectionControls/VboxContainer2"]
 layout_mode = 2
 text = "Host"
 
-[node name="HSeparator" type="HSeparator" parent="UI/Control/ConnectionControls"]
+[node name="HSeparator" type="HSeparator" parent="UI/Control/ConnectionControls/VboxContainer2"]
 layout_mode = 2
 
-[node name="HostID" type="LineEdit" parent="UI/Control/ConnectionControls"]
+[node name="HostID" type="LineEdit" parent="UI/Control/ConnectionControls/VboxContainer2"]
 unique_name_in_owner = true
 layout_mode = 2
 placeholder_text = "Host ID"
 
-[node name="Join" type="Button" parent="UI/Control/ConnectionControls"]
+[node name="Join" type="Button" parent="UI/Control/ConnectionControls/VboxContainer2"]
 layout_mode = 2
 text = "Join"
 
-[node name="IDLabel" type="Label" parent="UI/Control/ConnectionControls"]
+[node name="IDLabel" type="Label" parent="UI/Control/ConnectionControls/VboxContainer2"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Online ID: ABCD1234"
@@ -63,6 +109,7 @@ offset_right = 8.0
 offset_bottom = 8.0
 text = "Leave Room"
 
-[connection signal="pressed" from="UI/Control/ConnectionControls/Host" to="." method="_on_host_pressed"]
-[connection signal="pressed" from="UI/Control/ConnectionControls/Join" to="." method="_on_join_pressed"]
+[connection signal="pressed" from="UI/Control/ConnectionControls/VBoxContainer/Refresh" to="." method="_on_refresh_pressed"]
+[connection signal="pressed" from="UI/Control/ConnectionControls/VboxContainer2/Host" to="." method="_on_host_pressed"]
+[connection signal="pressed" from="UI/Control/ConnectionControls/VboxContainer2/Join" to="." method="_on_join_pressed"]
 [connection signal="pressed" from="UI/Control/LeaveRoom" to="." method="_on_leave_room_pressed"]
